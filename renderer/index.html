@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https: http:; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<title>VideoKit — 视频下载</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-theme="dark">
+<div id="app">
+  <header id="titlebar">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" class="brand-icon" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="m8 9 4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+      <span class="brand-name">VideoKit</span>
+      <span class="brand-sub">视频下载</span>
+    </div>
+    <div class="win-controls">
+      <button id="btn-min" class="win-btn" title="最小化"><svg viewBox="0 0 24 24" width="10" height="10" stroke="currentColor" stroke-width="1.6" fill="none"><path d="M4 12h16"/></svg></button>
+      <button id="btn-max" class="win-btn" title="最大化 / 还原"><svg viewBox="0 0 24 24" width="10" height="10" stroke="currentColor" stroke-width="1.6" fill="none"><rect x="5" y="5" width="14" height="14" rx="1"/></svg></button>
+      <button id="btn-close" class="win-btn win-close" title="关闭（最小化到托盘）"><svg viewBox="0 0 24 24" width="10" height="10" stroke="currentColor" stroke-width="1.6" fill="none"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    </div>
+  </header>
+
+  <div id="layout">
+    <nav id="sidebar">
+      <div class="nav-group">
+        <button class="nav-item active" data-page="tasks" title="任务列表">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>
+          <span>任务列表</span><em class="nav-badge hidden" id="nav-active-count"></em>
+        </button>
+        <button class="nav-item" data-page="library" title="本地库">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          <span>本地库</span>
+        </button>
+        <button class="nav-item" data-page="parse" title="链接解析">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <span>链接解析</span>
+        </button>
+        <button class="nav-item" data-page="settings" title="设置">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>设置</span>
+        </button>
+      </div>
+      <div class="nav-divider"></div>
+      <div class="nav-group-label">本地工具</div>
+      <div class="nav-group">
+        <button class="nav-item" data-page="convert" title="格式转换">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 21H3v-5"/><path d="M21 3l-7.5 7.5"/><path d="M3 21l7.5-7.5"/></svg>
+          <span>格式转换</span>
+        </button>
+        <button class="nav-item" data-page="extract" title="分离提取">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          <span>分离提取</span>
+        </button>
+        <button class="nav-item" data-page="watermark" title="水印清除">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>
+          <span>水印清除</span>
+        </button>
+        <button class="nav-item" data-page="subtitle" title="字幕添加">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg>
+          <span>字幕添加</span>
+        </button>
+        <button class="nav-item" data-page="music" title="音乐解密">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+          <span>音乐解密</span>
+        </button>
+        <button class="nav-item" data-page="lyrics" title="歌词烧录">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v8h6"/><path d="M9 13h6M9 17h4"/></svg>
+          <span>歌词烧录</span>
+        </button>
+      </div>
+      <div class="nav-bottom">
+        <div class="engine-card" id="engine-card" title="引擎状态">
+          <div class="engine-card-head">引擎状态</div>
+          <div class="engine-row-mini" id="ec-ffmpeg">
+            <span class="ec-pill">检测中</span>
+            <div class="ec-info"><strong>ffmpeg</strong><small>—</small></div>
+          </div>
+          <div class="engine-row-mini" id="ec-ytdlp">
+            <span class="ec-pill">检测中</span>
+            <div class="ec-info"><strong>yt-dlp</strong><small>—</small></div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <main id="main">
+      <!-- 任务列表 -->
+      <section class="page active" id="page-tasks">
+        <div class="toolbar">
+          <input type="text" id="task-search" class="tb-search" placeholder="搜索任务名称" aria-label="搜索任务">
+          <select id="task-sort" aria-label="排序字段" title="排序字段">
+            <option value="time">添加时间</option>
+            <option value="size">大小</option>
+            <option value="name">名称</option>
+            <option value="status">状态</option>
+          </select>
+          <button class="icon-btn" id="task-sort-dir" title="切换升序 / 降序">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></svg>
+          </button>
+          <div class="seg" id="task-view" role="radiogroup" aria-label="视图">
+            <button class="seg-btn active" data-view="list" title="列表模式">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+            </button>
+            <button class="seg-btn" data-view="grid" title="网格模式">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            </button>
+          </div>
+          <div class="tb-spacer"></div>
+          <button class="btn" id="btn-pause-all" title="暂停全部下载任务">全部暂停</button>
+          <button class="btn" id="btn-resume-all" title="继续全部已暂停任务">全部继续</button>
+          <button class="btn" id="btn-clear-tasks" title="清除已完成 / 失败 / 已取消的任务">全部清除</button>
+          <button class="btn" id="btn-open-dir" title="打开保存目录">打开保存目录</button>
+        </div>
+        <div class="group-head"><span>正在下载</span><em id="count-active">0</em></div>
+        <div id="task-list-active" class="task-list"></div>
+        <div class="group-head"><span>已完成</span><em id="count-done">0</em></div>
+        <div id="task-list-done" class="task-list"></div>
+        <div id="task-empty" class="empty-state">
+          <p>暂无任务</p>
+          <p class="sub">在「链接解析」页粘贴链接开始下载，Ctrl+V 可直接粘贴</p>
+        </div>
+      </section>
+
+      <!-- 本地库 -->
+      <section class="page" id="page-library">
+        <div class="toolbar">
+          <select id="lib-time" aria-label="按时间筛选" title="按时间筛选">
+            <option value="all">全部时间</option>
+            <option value="day">今天</option>
+            <option value="week">本周</option>
+            <option value="month">本月</option>
+          </select>
+          <select id="lib-format" aria-label="按格式筛选" title="按格式筛选">
+            <option value="all">全部格式</option>
+            <option value="video">视频</option>
+            <option value="audio">音频</option>
+            <option value="mp4">MP4</option>
+            <option value="mkv">MKV</option>
+            <option value="webm">WebM</option>
+            <option value="mp3">MP3</option>
+          </select>
+          <select id="lib-res" aria-label="按分辨率筛选" title="按分辨率筛选">
+            <option value="all">全部分辨率</option>
+            <option value="2160">4K 及以上</option>
+            <option value="1080">1080P</option>
+            <option value="720">720P</option>
+            <option value="low">720P 以下</option>
+          </select>
+          <div class="tb-spacer"></div>
+          <span class="tb-count" id="lib-count"></span>
+          <button class="btn" id="btn-lib-refresh" title="重新扫描保存目录">刷新</button>
+        </div>
+        <div id="lib-grid" class="lib-grid"></div>
+        <div id="lib-empty" class="empty-state hidden">
+          <p>保存目录中没有媒体文件</p>
+          <p class="sub">下载完成的任务会出现在这里</p>
+        </div>
+      </section>
+
+      <!-- 链接解析 -->
+      <section class="page" id="page-parse">
+        <div class="parse-input-row">
+          <input type="text" id="url-input" placeholder="粘贴视频链接" spellcheck="false" aria-label="视频链接">
+          <button class="btn primary" id="btn-parse">解析</button>
+        </div>
+        <div class="parse-options">
+          <label class="check"><input type="checkbox" id="opt-merge" checked><span>自动合并音视频</span></label>
+          <label class="check"><input type="checkbox" id="opt-subs"><span>下载字幕</span></label>
+          <label class="check"><input type="checkbox" id="opt-audio-only"><span>仅下载音频</span></label>
+          <select id="opt-audio-fmt" class="hidden" aria-label="音频格式" title="音频格式">
+            <option value="mp3">MP3</option>
+            <option value="m4a">M4A</option>
+            <option value="wav">WAV</option>
+            <option value="flac">FLAC</option>
+          </select>
+        </div>
+        <div id="parse-loading" class="parse-loading hidden"><div class="spinner"></div><span>正在解析</span></div>
+        <div id="parse-result" class="parse-result hidden">
+          <div class="parse-head">
+            <img id="result-thumb" alt="" referrerpolicy="no-referrer">
+            <div class="parse-head-info">
+              <h2 id="result-title"></h2>
+              <div class="meta-line" id="result-meta"></div>
+            </div>
+          </div>
+          <div class="fmt-table" id="fmt-table" role="radiogroup" aria-label="选择格式"></div>
+          <div class="parse-actions">
+            <button class="btn primary" id="btn-download">开始下载</button>
+            <span class="hint" id="download-dir-hint"></span>
+          </div>
+        </div>
+        <div class="empty-state" id="parse-empty">
+          <p>支持 yt-dlp 覆盖的站点</p>
+          <p class="sub">请仅下载您拥有版权或已获授权的内容</p>
+        </div>
+      </section>
+
+      <!-- 字幕添加 -->
+      <section class="page" id="page-subtitle">
+        <div class="page-head"><h1>字幕添加</h1><p>语音识别生成字幕或导入外部字幕，软封装 / 硬烧录</p></div>
+        <div class="dropzone" id="dz-subtitle" tabindex="0" role="button" aria-label="选择或拖入视频文件">
+          <p>点击选择或拖入视频文件</p>
+          <p class="sub">识别使用本地 faster-whisper，不上传音频</p>
+        </div>
+        <div id="subtitle-panel" class="hidden">
+          <div class="file-card" id="subtitle-file"></div>
+          <div class="options-card">
+            <div class="field-label">字幕来源</div>
+            <div class="seg" id="sub-source" role="radiogroup" aria-label="字幕来源">
+              <button class="seg-btn active" data-src="asr">语音识别</button>
+              <button class="seg-btn" data-src="import">导入字幕文件</button>
+              <button class="seg-btn" data-src="online">在线搜索</button>
+            </div>
+            <div class="opt-row" id="sub-asr-opts">
+              <div class="opt-field"><label for="sub-model">识别模型</label>
+                <select id="sub-model"><option value="tiny">tiny（最快）</option><option value="base">base</option><option value="small" selected>small（推荐）</option><option value="medium">medium（更准）</option></select>
+              </div>
+              <div class="opt-field"><label for="sub-lang">语言</label>
+                <select id="sub-lang"><option value="">自动</option><option value="zh">中文</option><option value="en">英语</option><option value="ja">日语</option><option value="ko">韩语</option></select>
+              </div>
+              <div class="opt-field"><label for="sub-device">设备</label>
+                <select id="sub-device"><option value="auto">自动（GPU 优先）</option><option value="cuda">GPU</option><option value="cpu">CPU</option></select>
+              </div>
+              <div class="opt-field"><label>&nbsp;</label><button class="btn primary" id="btn-asr">开始识别</button></div>
+            </div>
+            <div class="opt-row hidden" id="sub-import-opts">
+              <button class="btn" id="btn-sub-import">选择 srt / vtt / ass 文件</button>
+              <span class="hint">ASS 样式将转为纯文本</span>
+            </div>
+            <div class="opt-row hidden" id="sub-online-opts">
+              <div class="opt-field grow"><label for="sub-query">片名</label><input type="text" id="sub-query" placeholder="如 流浪地球 / The Matrix" spellcheck="false"></div>
+              <div class="opt-field"><label for="sub-year">年份</label><input type="text" id="sub-year" placeholder="可选" style="width:80px"></div>
+              <div class="opt-field"><label for="sub-online-lang">语言</label>
+                <select id="sub-online-lang"><option value="chi">中文</option><option value="eng">英语</option><option value="jpn">日语</option><option value="kor">韩语</option><option value="chi,eng">中英</option></select>
+              </div>
+              <div class="opt-field"><label>&nbsp;</label><button class="btn primary" id="btn-sub-search">搜索字幕</button></div>
+            </div>
+            <div class="sub-online-results hidden" id="sub-online-results"></div>
+            <div class="opt-row hidden" id="sub-url-opts">
+              <div class="opt-field grow"><label for="sub-url">字幕直链（srt / ass / vtt / zip / gz）</label><input type="text" id="sub-url" placeholder="https://… 任意来源的字幕下载地址" spellcheck="false"></div>
+              <div class="opt-field"><label>&nbsp;</label><button class="btn" id="btn-sub-url">下载并套用</button></div>
+            </div>
+            <div class="field-label">字幕预览与编辑 <span class="hint" id="sub-count"></span></div>
+            <div class="opt-row">
+              <div class="opt-field"><label for="sub-offset">整体偏移（秒，可负）</label><input type="text" id="sub-offset" value="0" style="width:100px"></div>
+              <div class="opt-field"><label>&nbsp;</label><button class="btn" id="btn-sub-offset">应用偏移</button></div>
+            </div>
+            <div class="sub-list" id="sub-list"></div>
+            <div class="field-label">输出方式</div>
+            <div class="seg" id="sub-mode" role="radiogroup" aria-label="输出方式">
+              <button class="seg-btn active" data-mode="mux">软封装（可选字幕轨）</button>
+              <button class="seg-btn" data-mode="burn">硬烧录（进入画面）</button>
+            </div>
+            <div class="opt-row" id="sub-mux-opts">
+              <div class="opt-field"><label for="sub-container">容器</label>
+                <select id="sub-container"><option value="mp4">MP4（mov_text）</option><option value="mkv">MKV（srt）</option></select>
+              </div>
+            </div>
+            <div class="opt-row hidden" id="sub-burn-opts">
+              <div class="opt-field"><label for="sub-fontsize">字号</label><input type="text" id="sub-fontsize" value="22" style="width:80px"></div>
+              <div class="opt-field"><label for="sub-color">颜色</label>
+                <select id="sub-color"><option value="white">白色</option><option value="yellow">黄色</option></select>
+              </div>
+              <div class="opt-field"><label for="sub-margin">底边距</label><input type="text" id="sub-margin" value="30" style="width:80px"></div>
+            </div>
+            <div class="action-row">
+              <button class="btn primary" id="btn-sub-apply" disabled>添加字幕</button>
+              <button class="btn" id="btn-sub-reset">重新选择</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 音乐解密 -->
+      <section class="page" id="page-music">
+        <div class="page-head"><h1>音乐解密</h1><p>解密流媒体平台缓存的加密音乐文件，仅本地处理</p></div>
+        <div class="dropzone" id="dz-music" tabindex="0" role="button" aria-label="选择或拖入加密音乐文件">
+          <p>点击选择或拖入加密音乐文件（可多选）</p>
+          <p class="sub">网易 ncm · QQ qmc/mflac/mgg · 酷狗 kgm/vpr · 酷我 kwm · 虾米 xm · 咪咕 mg3d</p>
+        </div>
+        <div id="music-panel" class="hidden">
+          <div class="options-card">
+            <div class="field-label">待解密文件 <span class="hint" id="music-count"></span></div>
+            <div class="sub-list" id="music-list"></div>
+            <div class="action-row">
+              <button class="btn primary" id="btn-music-decrypt">开始解密</button>
+              <button class="btn" id="btn-music-add">继续添加</button>
+              <button class="btn" id="btn-music-clear">清空列表</button>
+              <span class="hint" id="music-out-hint"></span>
+            </div>
+            <p class="set-note">请仅解密您已合法获取（如会员下载）的文件，供个人设备播放使用；解密结果不改变版权归属。</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 歌词烧录 -->
+      <section class="page" id="page-lyrics">
+        <div class="page-head"><h1>歌词烧录</h1><p>把歌词（含 LRC 时间轴）写入音乐文件标签，播放器可直接显示</p></div>
+        <div class="dropzone" id="dz-lyrics" tabindex="0" role="button" aria-label="选择或拖入音乐文件">
+          <p>点击选择或拖入音乐文件（可多选）</p>
+          <p class="sub">mp3（ID3 USLT/SYLT）· flac / ogg · m4a（©lyr）· wav / aiff</p>
+        </div>
+        <div id="lyrics-panel" class="hidden">
+          <div class="options-card">
+            <div class="field-label">目标文件 <span class="hint" id="lyrics-count"></span></div>
+            <div class="sub-list" id="lyrics-files"></div>
+            <div class="field-label">歌词来源</div>
+            <div class="seg" id="lyr-source" role="radiogroup" aria-label="歌词来源">
+              <button class="seg-btn active" data-src="online">在线搜索</button>
+              <button class="seg-btn" data-src="local">本地 lrc / txt</button>
+              <button class="seg-btn" data-src="paste">粘贴歌词</button>
+            </div>
+            <div class="opt-row" id="lyr-online-opts">
+              <div class="opt-field grow"><label for="lyr-query">歌名 / 歌手</label><input type="text" id="lyr-query" placeholder="如 海阔天空 Beyond" spellcheck="false"></div>
+              <div class="opt-field"><label>&nbsp;</label><button class="btn primary" id="btn-lyr-search">搜索</button></div>
+            </div>
+            <div class="sub-online-results hidden" id="lyr-results"></div>
+            <div class="opt-row hidden" id="lyr-local-opts">
+              <button class="btn" id="btn-lyr-local">选择 lrc / txt 文件</button>
+            </div>
+            <div class="field-label">歌词内容（可编辑）</div>
+            <textarea id="lyr-text" class="lyr-textarea" placeholder="歌词将显示在这里；LRC 时间轴格式 [mm:ss.xx] 会保留为同步歌词" spellcheck="false"></textarea>
+            <div class="opt-row">
+              <label class="check"><input type="checkbox" id="lyr-synced" checked><span>保留时间轴（同步歌词）</span></label>
+            </div>
+            <div class="action-row">
+              <button class="btn primary" id="btn-lyr-burn" disabled>烧录进文件</button>
+              <button class="btn" id="btn-lyr-add">继续添加文件</button>
+              <button class="btn" id="btn-lyr-clear">清空列表</button>
+            </div>
+            <p class="set-note">直接修改原文件标签（音频流不变）；mp3 写入 ID3 USLT/SYLT，其余格式写入 LYRICS / ©lyr 标签。</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 设置 -->
+      <section class="page" id="page-settings">
+        <div class="set-group">
+          <h3>保存路径</h3>
+          <div class="set-row">
+            <div class="set-label"><span>下载 / 输出目录</span></div>
+            <div class="set-control path-row">
+              <input type="text" id="set-dir" spellcheck="false">
+              <button class="btn" id="pick-dir">选择文件夹</button>
+              <button class="btn" id="open-dir">打开</button>
+            </div>
+          </div>
+        </div>
+        <div class="set-group">
+          <h3>下载限制</h3>
+          <div class="set-row">
+            <div class="set-label"><span>最大并发任务数</span><small>同时进行的任务上限</small></div>
+            <div class="set-control"><select id="set-concurrent">
+              <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
+            </select></div>
+          </div>
+          <div class="set-row">
+            <div class="set-label"><span>单任务下载线程数</span><small>分片并发，1–16</small></div>
+            <div class="set-control"><select id="set-threads">
+              <option value="1">1</option><option value="4">4</option><option value="8">8</option><option value="16">16</option>
+            </select></div>
+          </div>
+          <div class="set-row">
+            <div class="set-label"><span>速度上限</span><small id="speed-limit-label">不限速</small></div>
+            <div class="set-control range-control"><input type="range" id="set-speed" min="0" max="10240" step="128" value="0"></div>
+          </div>
+          <div class="set-row">
+            <div class="set-label"><span>仅在有线网络下载</span><small>无线网络时拒绝新建下载</small></div>
+            <div class="set-control"><label class="switch"><input type="checkbox" id="set-wired"><i></i></label></div>
+          </div>
+        </div>
+        <div class="set-group">
+          <h3>格式偏好</h3>
+          <div class="set-row">
+            <div class="set-label"><span>优先编码</span></div>
+            <div class="set-control"><select id="set-codec">
+              <option value="auto">自动（最佳画质）</option>
+              <option value="av1">AV1</option>
+              <option value="h265">H.265 / HEVC</option>
+            </select></div>
+          </div>
+          <div class="set-row">
+            <div class="set-label"><span>视频编码器</span><small id="gpu-hint">检测中</small></div>
+            <div class="set-control"><select id="set-encoder">
+              <option value="auto">自动（GPU 优先）</option>
+              <option value="gpu">仅 GPU（NVENC）</option>
+              <option value="cpu">仅 CPU（libx264）</option>
+            </select></div>
+          </div>
+          <div class="set-row">
+            <div class="set-label"><span>默认清晰度</span></div>
+            <div class="set-control"><select id="set-quality">
+              <option value="best">最佳</option>
+              <option value="2160">2160P</option>
+              <option value="1440">1440P</option>
+              <option value="1080">1080P</option>
+              <option value="720">720P</option>
+            </select></div>
+          </div>
+          <div class="set-row">
+            <div class="set-label"><span>自动下载字幕</span></div>
+            <div class="set-control"><label class="switch"><input type="checkbox" id="set-autosubs"><i></i></label></div>
+          </div>
+        </div>
+        <div class="set-group">
+          <h3>界面</h3>
+          <div class="set-row">
+            <div class="set-label"><span>主题</span></div>
+            <div class="set-control"><select id="set-theme">
+              <option value="system">跟随系统</option>
+              <option value="dark">深色</option>
+              <option value="light">浅色</option>
+            </select></div>
+          </div>
+          <div class="set-row">
+            <div class="set-label"><span>窗口启动大小</span></div>
+            <div class="set-control"><select id="set-startup">
+              <option value="default">默认 1280×800</option>
+              <option value="last">上次关闭时</option>
+              <option value="max">最大化</option>
+            </select></div>
+          </div>
+          <div class="set-row">
+            <div class="set-label"><span>关闭时最小化到托盘</span><small>后台继续下载</small></div>
+            <div class="set-control"><label class="switch"><input type="checkbox" id="set-tray"><i></i></label></div>
+          </div>
+        </div>
+        <div class="set-group">
+          <h3>平台 Cookies</h3>
+          <div class="set-row">
+            <div class="set-label"><span>登录态</span><small id="cookie-status">未启用</small></div>
+            <div class="set-control cookie-btns">
+              <button class="btn" data-cookie-url="https://passport.bilibili.com/login">B站登录</button>
+              <button class="btn" data-cookie-url="https://accounts.google.com/ServiceLogin?service=youtube">YouTube 登录</button>
+              <button class="btn" data-cookie-url="https://www.douyin.com">抖音获取</button>
+              <button class="btn" data-import="edge">从 Edge 导入</button>
+              <button class="btn" id="btn-cookies-clear">清除</button>
+            </div>
+          </div>
+          <p class="set-note">登录窗口在登录成功后自动关闭并保存。Chrome 禁止后台读取默认配置，请使用登录窗口。Cookies 仅本地用于 yt-dlp 鉴权。</p>
+        </div>
+        <div class="set-group">
+          <h3>高级</h3>
+          <div class="set-row">
+            <div class="set-label"><span>解析接口</span><small id="parse-engine-label">yt-dlp（本地）</small></div>
+            <div class="set-control"><select id="set-engine" disabled><option>yt-dlp（本地）</option></select></div>
+          </div>
+          <div class="set-row">
+            <div class="set-label"><span>代理</span><small>例 http://127.0.0.1:7890，留空不用</small></div>
+            <div class="set-control"><input type="text" id="set-proxy" placeholder="留空不使用代理" spellcheck="false"></div>
+          </div>
+          <div class="set-row">
+            <div class="set-label"><span>ffmpeg 路径</span><small>留空自动检测</small></div>
+            <div class="set-control path-row"><input type="text" id="set-ffmpeg" placeholder="自动检测" spellcheck="false"><button class="btn" id="pick-ffmpeg">浏览</button></div>
+          </div>
+          <div class="set-row">
+            <div class="set-label"><span>yt-dlp 路径</span><small>留空自动检测</small></div>
+            <div class="set-control path-row"><input type="text" id="set-ytdlp" placeholder="自动检测" spellcheck="false"><button class="btn" id="pick-ytdlp">浏览</button></div>
+          </div>
+          <div class="set-row">
+            <div class="set-label"><span>Python 路径</span><small>语音识别用，留空自动检测</small></div>
+            <div class="set-control path-row"><input type="text" id="set-python" placeholder="自动检测" spellcheck="false"><button class="btn" id="pick-python">浏览</button></div>
+          </div>
+          <div class="set-row">
+            <div class="set-label"><span>OpenSubtitles 账号</span><small>在线字幕下载用（免费注册）；不填则匿名搜索受限下载</small></div>
+            <div class="set-control path-row">
+              <input type="text" id="set-osuser" placeholder="用户名" spellcheck="false" style="width:140px">
+              <input type="password" id="set-ospass" placeholder="密码" style="width:140px">
+              <button class="btn" id="btn-os-register">注册</button>
+            </div>
+          </div>
+          <div class="set-row">
+            <div class="set-label"><span>日志</span><small>记录任务状态到 videokit.log</small></div>
+            <div class="set-control"><label class="switch"><input type="checkbox" id="set-log"><i></i></label></div>
+          </div>
+          <div class="set-row">
+            <div class="set-label"><span>输出自动校验</span><small>处理完成后全解码检测能否正常播放</small></div>
+            <div class="set-control"><label class="switch"><input type="checkbox" id="set-verify"><i></i></label></div>
+          </div>
+          <div class="set-row">
+            <div class="set-label"><span>引擎状态</span></div>
+            <div class="set-control engine-line">
+              <span class="dot" id="eng-ffmpeg-dot"></span><span id="eng-ffmpeg-text">检测中</span>
+              <span class="dot" id="eng-ytdlp-dot"></span><span id="eng-ytdlp-text">检测中</span>
+              <button class="btn" id="btn-recheck">重新检测</button>
+            </div>
+          </div>
+        </div>
+        <div class="set-group">
+          <h3>关于</h3>
+          <div class="set-row">
+            <div class="set-label"><span>VideoKit</span><small id="about-ver">v1.1.0</small></div>
+            <div class="set-control"><span class="hint">MIT License · 解析 yt-dlp (Unlicense) · 媒体处理 FFmpeg (LGPL/GPL)</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 格式转换 -->
+      <section class="page" id="page-convert">
+        <div class="page-head"><h1>格式转换</h1><p>视频 / 音频格式互转</p></div>
+        <div class="dropzone" id="dz-convert" tabindex="0" role="button" aria-label="选择或拖入媒体文件">
+          <p>点击选择或拖入媒体文件</p>
+          <p class="sub">MP4 · MKV · MOV · WebM · AVI · MP3 · WAV</p>
+        </div>
+        <div id="convert-panel" class="hidden">
+          <div class="file-card" id="convert-file"></div>
+          <div class="options-card">
+            <div class="field-label">目标格式</div>
+            <div class="fmt-grid" id="convert-formats"></div>
+            <div class="opt-row" id="convert-video-opts">
+              <div class="opt-field"><label for="convert-res">分辨率</label>
+                <select id="convert-res"><option value="original">保持原始</option><option value="2160">2160P</option><option value="1440">1440P</option><option value="1080">1080P</option><option value="720">720P</option><option value="480">480P</option></select>
+              </div>
+              <div class="opt-field grow"><label for="convert-crf">画质 <span id="crf-label" class="range-val">高 (CRF 21)</span></label>
+                <input type="range" id="convert-crf" min="16" max="32" value="21" step="1">
+              </div>
+            </div>
+            <div class="opt-row" id="convert-audio-opts">
+              <div class="opt-field"><label for="convert-abr">音频码率</label>
+                <select id="convert-abr"><option value="128">128 kbps</option><option value="192" selected>192 kbps</option><option value="256">256 kbps</option><option value="320">320 kbps</option></select>
+              </div>
+            </div>
+            <div class="opt-row hidden" id="convert-lossless-opts">
+              <div class="opt-field"><label for="convert-rate">采样率</label>
+                <select id="convert-rate"><option value="original">保持原始</option><option value="44100">44.1 kHz</option><option value="48000">48 kHz</option><option value="96000">96 kHz</option><option value="192000">192 kHz</option></select>
+              </div>
+              <div class="opt-field"><label for="convert-depth">位深</label>
+                <select id="convert-depth"><option value="16">16 bit</option><option value="24">24 bit</option><option value="32">32 bit</option></select>
+              </div>
+            </div>
+            <div class="action-row">
+              <button id="btn-convert" class="btn primary">开始转换</button>
+              <button id="btn-convert-reset" class="btn">重新选择</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 分离提取 -->
+      <section class="page" id="page-extract">
+        <div class="page-head"><h1>视音频分离提取</h1><p>提取音轨或分离无声画面</p></div>
+        <div class="dropzone" id="dz-extract" tabindex="0" role="button" aria-label="选择或拖入视频文件">
+          <p>点击选择或拖入视频文件</p>
+        </div>
+        <div id="extract-panel" class="hidden">
+          <div class="file-card" id="extract-file"></div>
+          <div class="options-card">
+            <div class="field-label">操作模式</div>
+            <div class="mode-grid" id="extract-modes">
+              <button class="mode-card active" data-mode="audio"><strong>提取音频</strong><span>仅保留声音轨道</span></button>
+              <button class="mode-card" data-mode="video"><strong>无声视频</strong><span>去除声音保留画面</span></button>
+              <button class="mode-card" data-mode="both"><strong>同时分离</strong><span>音频 + 无声视频</span></button>
+            </div>
+            <div class="opt-row" id="extract-audio-row">
+              <div class="opt-field"><label for="extract-fmt">音频格式</label>
+                <select id="extract-fmt"><option value="mp3">MP3</option><option value="m4a">M4A (AAC)</option><option value="wav">WAV</option><option value="flac">FLAC</option><option value="copy">原始音轨</option></select>
+              </div>
+            </div>
+            <div class="action-row">
+              <button id="btn-extract" class="btn primary">开始提取</button>
+              <button id="btn-extract-reset" class="btn">重新选择</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 水印清除 -->
+      <section class="page" id="page-watermark">
+        <div class="page-head"><h1>水印清除</h1><p>在预览帧上框选水印区域</p></div>
+        <div class="dropzone" id="dz-watermark" tabindex="0" role="button" aria-label="选择或拖入视频文件">
+          <p>点击选择或拖入视频文件</p>
+        </div>
+        <div id="watermark-panel" class="hidden">
+          <div class="wm-toolbar">
+            <div class="seg" id="wm-modes" role="radiogroup" aria-label="去水印方式">
+              <button class="seg-btn active" data-mode="delogo">智能修补</button>
+              <button class="seg-btn" data-mode="blur">模糊遮盖</button>
+              <button class="seg-btn" data-mode="crop">裁剪画面</button>
+            </div>
+            <span class="hint" id="wm-hint">在画面上按住拖动框选水印区域（可多个）</span>
+            <button id="btn-wm-clear" class="btn">清空区域</button>
+          </div>
+          <div class="wm-preview-wrap">
+            <div class="wm-preview" id="wm-preview">
+              <img id="wm-frame" alt="视频预览帧" draggable="false">
+              <canvas id="wm-canvas"></canvas>
+              <div id="wm-frame-loading" class="wm-frame-loading hidden"><div class="spinner"></div></div>
+            </div>
+          </div>
+          <div class="wm-time-row">
+            <span class="time-label" id="wm-time-label">00:00</span>
+            <input type="range" id="wm-time" min="0" max="100" value="0" step="0.1" aria-label="预览时间点">
+            <span class="time-label" id="wm-duration-label">00:00</span>
+          </div>
+          <div class="wm-regions" id="wm-regions"></div>
+          <div class="action-row">
+            <button id="btn-watermark" class="btn primary" disabled>开始处理</button>
+            <button id="btn-wm-reset" class="btn">重新选择</button>
+            <span class="hint">输出 MP4（H.264），音频保持不变</span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div id="dialog-root" class="hidden">
+  <div class="scrim" id="dialog-scrim"></div>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+    <h2 id="dialog-title"></h2>
+    <div id="dialog-body"></div>
+    <div id="dialog-footer"></div>
+  </div>
+</div>
+<div id="toasts" aria-live="polite"></div>
+<script src="app.js"></script>
+</body>
+</html>

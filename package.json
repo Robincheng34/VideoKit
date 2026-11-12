@@ -1,0 +1,86 @@
+{
+  "name": "videokit",
+  "productName": "VideoKit",
+  "version": "1.5.0",
+  "description": "视频解析下载 · 格式转换 · 视音频分离 · 水印清除",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "author": "Robin",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "com.videokit.desktop",
+    "productName": "VideoKit",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "renderer/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "npmRebuild": false,
+    "extraResources": [
+      {
+        "from": "src/asr_helper.py",
+        "to": "asr_helper.py"
+      },
+      {
+        "from": "src/cookie-helper.js",
+        "to": "cookie-helper.js"
+      },
+      {
+        "from": "src/subs-helper.js",
+        "to": "subs-helper.js"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "VideoKit",
+      "language": "2052",
+      "installerLanguages": [
+        "zh_CN",
+        "en_US"
+      ],
+      "displayLanguageSelector": false
+    },
+    "portable": {
+      "artifactName": "VideoKit-${version}-portable.exe"
+    }
+  },
+  "dependencies": {
+    "@clamber_l/crypto": "^0.1.12",
+    "adm-zip": "^0.6.1",
+    "node-id3": "^0.2.9"
+  }
+}
