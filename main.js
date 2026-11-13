@@ -7,6 +7,7 @@ const tools = require('./src/tools');
 const music = require('./src/music-crypto');
 const lyrics = require('./src/lyrics');
 const { TaskManager } = require('./src/tasks');
+const memory = require('./src/memory');
 
 if (process.argv.includes('--dev-instance')) {
   app.setPath('userData', path.join(app.getPath('appData'), 'VideoKit-dev'));
@@ -521,6 +522,10 @@ function registerIpc() {
   ipcMain.handle('theme:current', () => nativeTheme.shouldUseDarkColors);
   nativeTheme.on('updated', () => send('theme:changed', nativeTheme.shouldUseDarkColors));
 
+  ipcMain.handle('memory:get', () => memory.getAll());
+  ipcMain.handle('memory:record', (_e, group, data) => { memory.record(group, data); return memory.getAll(); });
+  ipcMain.handle('memory:clear', (_e, group) => { memory.clear(group); return memory.getAll(); });
+
   ipcMain.handle('dialog:file', async (_e, filters) => {
     const r = await dialog.showOpenDialog(win, {
       properties: ['openFile'],
@@ -706,7 +711,9 @@ function registerIpc() {
       thumb: info.thumbnail, info,
       cmdKey: 'ytdlp', args,
       outputPath: path.join(dir, base + (formatKey === 'audio' ? '.' + (audioFormat || 'mp3') : '.mp4')),
-      parse: 'ytdlp', meta
+      parse: 'ytdlp',
+      hasVideo: formatKey !== 'audio', hasAudio: true,
+      meta
     });
   });
 
@@ -752,7 +759,7 @@ function registerIpc() {
       subtitle: `转换为 ${format.toUpperCase()}${resolution !== 'original' && !audioOnly ? ' · ' + resolution + 'P' : ''}${useGpu ? ' · GPU' : ''}`,
       cmdKey: 'ffmpeg', args: buildArgs(useGpu), cpuFallbackArgs: useGpu ? buildArgs(false) : null,
       outputPath: out, parse: 'ffmpeg', durationHint: opts.duration,
-      fpsHint: opts.fps, hasAudio: audioOnly ? true : opts.hasAudio, inputFile: file,
+      fpsHint: opts.fps, hasAudio: audioOnly ? true : opts.hasAudio, hasVideo: !audioOnly, inputFile: file,
       meta: { duration: opts.duration, resolution: resolution !== 'original' ? resolution + 'P' : '原始', codec: useGpu ? 'H.264·NVENC' : format.toUpperCase(), size: 0 }
     });
   });
@@ -775,7 +782,7 @@ function registerIpc() {
       ids.push(tasks.add({
         type: 'extract', title: path.basename(file), subtitle: `提取音频 → ${fmt.toUpperCase()}`,
         cmdKey: 'ffmpeg', args: ['-i', file, '-vn', '-map', '0:a:0?', ...audioCodecArgs(fmt), '-y', out],
-        outputPath: out, parse: 'ffmpeg', durationHint: duration, hasAudio: true, inputFile: file,
+        outputPath: out, parse: 'ffmpeg', durationHint: duration, hasAudio: true, hasVideo: false, inputFile: file,
         meta: { duration, resolution: '音频', codec: fmt.toUpperCase(), size: 0 }
       }));
     }
@@ -784,7 +791,7 @@ function registerIpc() {
       ids.push(tasks.add({
         type: 'extract', title: path.basename(file), subtitle: '分离无声视频',
         cmdKey: 'ffmpeg', args: ['-i', file, '-map', `0:${opts.vindex ?? 0}`, '-an', '-c:v', 'copy', '-y', out],
-        outputPath: out, parse: 'ffmpeg', durationHint: duration, fpsHint: opts.fps, hasAudio: false, inputFile: file,
+        outputPath: out, parse: 'ffmpeg', durationHint: duration, fpsHint: opts.fps, hasAudio: false, hasVideo: true, inputFile: file,
         meta: { duration, resolution: '原始', codec: 'H.264', size: 0 }
       }));
     }
@@ -830,7 +837,7 @@ function registerIpc() {
       subtitle: (mode === 'delogo' ? `智能修补 · ${regions.length} 个区域` : mode === 'blur' ? `模糊遮盖 · ${regions.length} 个区域` : '裁剪画面') + (useGpu ? ' · GPU' : ''),
       cmdKey: 'ffmpeg', args: buildArgs(useGpu), cpuFallbackArgs: useGpu ? buildArgs(false) : null,
       outputPath: out, parse: 'ffmpeg', durationHint: duration,
-      fpsHint: opts.fps, hasAudio: opts.hasAudio, inputFile: file,
+      fpsHint: opts.fps, hasAudio: opts.hasAudio, hasVideo: true, inputFile: file,
       meta: { duration, resolution: '原始', codec: useGpu ? 'H.264·NVENC' : 'H.264', size: 0 }
     });
   });
@@ -935,7 +942,7 @@ function registerIpc() {
         cmdKey: 'ffmpeg',
         args: ['-i', file, '-i', srt, '-map', `0:${vindex ?? 0}`, '-map', `0:${aindex ?? 'a:0'}?`, '-map', '1:0',
           '-c:v', 'copy', '-c:a', 'copy', '-c:s', ext === 'mkv' ? 'srt' : 'mov_text', '-y', out],
-        outputPath: out, parse: 'ffmpeg', durationHint: duration, fpsHint: fps, hasAudio, inputFile: file,
+        outputPath: out, parse: 'ffmpeg', durationHint: duration, fpsHint: fps, hasAudio, hasVideo: true, inputFile: file,
         meta: { duration, resolution: '原始', codec: 'COPY+SUB', size: 0 }
       });
     }
@@ -953,7 +960,7 @@ function registerIpc() {
       type: 'subtitle', title: path.basename(file),
       subtitle: `硬烧录 · ${entries.length} 条${useGpu ? ' · GPU' : ''}`,
       cmdKey: 'ffmpeg', args: buildArgs(useGpu), cpuFallbackArgs: useGpu ? buildArgs(false) : null,
-      outputPath: out, parse: 'ffmpeg', durationHint: duration, fpsHint: fps, hasAudio, inputFile: file,
+      outputPath: out, parse: 'ffmpeg', durationHint: duration, fpsHint: fps, hasAudio, hasVideo: true, inputFile: file,
       meta: { duration, resolution: '原始', codec: useGpu ? 'H.264·NVENC' : 'H.264', size: 0 }
     });
   });
@@ -1015,6 +1022,7 @@ if (!gotLock) {
   app.on('second-instance', () => { if (win) { win.show(); win.focus(); } });
   app.whenReady().then(() => {
     loadSettings();
+    memory.load(app);
     tasks = new TaskManager(settings, tools, send);
     registerIpc();
     watchCookies();

@@ -35,11 +35,13 @@ const ICON = {
   asr: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>',
   subtitle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg>',
   decrypt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>',
-  lyrics: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v8h6"/><path d="M9 13h6M9 17h4"/></svg>'
+  lyrics: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v8h6"/><path d="M9 13h6M9 17h4"/></svg>',
+  chain: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>'
 };
 
 /* ── 主题 ── */
 let settings = null;
+let memory = {};
 let systemDark = true;
 function applyTheme() {
   const mode = settings ? settings.theme : 'system';
@@ -160,6 +162,8 @@ function actionButtons(t) {
     b.push(`<button class="icon-btn" data-act="retry" title="重试">${ICON.retry}</button>`);
   if (t.status === 'done' && t.outputPath)
     b.push(`<button class="icon-btn" data-act="reveal" title="打开目录">${ICON.folder}</button>`);
+  if (t.status === 'done' && t.outputPath)
+    b.push(`<button class="icon-btn" data-act="chain" title="后续操作">${ICON.chain}</button>`);
   b.push(`<button class="icon-btn" data-act="remove" title="删除">${ICON.trash}</button>`);
   return b.join('');
 }
@@ -289,11 +293,93 @@ async function taskAction(act, id) {
   else if (act === 'resume') await api.tasks.resume(id);
   else if (act === 'retry') await api.tasks.retry(id);
   else if (act === 'reveal' && t?.outputPath) api.shell.reveal(t.outputPath);
+  else if (act === 'chain' && t?.outputPath) openChainDialog(t);
   else if (act === 'remove') {
     const ok = await confirmDialog('删除任务', `确定删除任务「${t ? t.title : id}」？\n不会删除已下载的文件。`, '删除');
     if (ok) await api.tasks.remove(id);
   }
 }
+
+/* ── 任务完成后的功能联动 ── */
+const VIDEO_EXTS = ['mp4', 'mkv', 'webm', 'mov', 'avi', 'flv', 'ts', 'm4v', 'wmv'];
+const extOf = p => (p.split('.').pop() || '').toLowerCase();
+
+function openChainDialog(t) {
+  const file = t.outputPath;
+  const isVideo = VIDEO_EXTS.includes(extOf(file));
+  const actions = isVideo
+    ? [
+        { label: '转码 / 转格式', page: 'convert' },
+        { label: '字幕添加', page: 'subtitle' },
+        { label: '水印清除', page: 'watermark' },
+        { label: '视音频分离', page: 'extract' }
+      ]
+    : [
+        { label: '转码 / 转格式', page: 'convert' },
+        { label: '歌词烧录', page: 'lyrics' }
+      ];
+  const buttons = actions.map((a, i) => ({ label: a.label, value: i }));
+  buttons.push({ label: '取消', value: null });
+  const body = `<p class="dlg-msg">对「${esc(baseName(file))}」执行后续操作：</p>`;
+  return openDialog({ title: '后续操作', body, buttons }).then(v => {
+    if (v === null || v === undefined) return;
+    const a = actions[parseInt(v)];
+    if (a) chainTo(a.page, file);
+  });
+}
+
+async function chainTo(page, file) {
+  try {
+    if (page === 'convert') {
+      const probe = await api.media.probe(file);
+      convertState.file = file; convertState.probe = probe;
+      $('#convert-file').innerHTML = fileCardHTML(baseName(file), probe);
+      $('#dz-convert').classList.add('hidden');
+      $('#convert-panel').classList.remove('hidden');
+      gotoPage('convert');
+      toast('已载入文件，可继续转码', 'success');
+    } else if (page === 'subtitle') {
+      const probe = await api.media.probe(file);
+      if (!probe.acodec) return errorDialog('无法识别', '该文件没有音轨，无法语音识别；可导入外部字幕。');
+      subState.file = file; subState.probe = probe; subState.entries = []; subState.format = null;
+      $('#subtitle-file').innerHTML = fileCardHTML(baseName(file), probe);
+      $('#dz-subtitle').classList.add('hidden');
+      $('#subtitle-panel').classList.remove('hidden');
+      renderSubList();
+      gotoPage('subtitle');
+      toast('已载入文件，可继续添加字幕', 'success');
+    } else if (page === 'watermark') {
+      const probe = await api.media.probe(file);
+      if (!probe.width) return errorDialog('无法处理', '该文件没有视频画面。');
+      wm.file = file; wm.probe = probe; wm.regions = [];
+      $('#wm-time').max = String(Math.max(0.1, probe.duration - 0.1));
+      $('#wm-time').value = '0';
+      $('#wm-time-label').textContent = '00:00';
+      $('#wm-duration-label').textContent = fmtTime(probe.duration);
+      $('#dz-watermark').classList.add('hidden');
+      $('#watermark-panel').classList.remove('hidden');
+      renderRegions();
+      loadFrame(0);
+      gotoPage('watermark');
+      toast('已载入文件，可框选水印区域', 'success');
+    } else if (page === 'extract') {
+      const probe = await api.media.probe(file);
+      extractState.file = file; extractState.probe = probe;
+      $('#extract-file').innerHTML = fileCardHTML(baseName(file), probe);
+      $('#dz-extract').classList.add('hidden');
+      $('#extract-panel').classList.remove('hidden');
+      gotoPage('extract');
+      toast('已载入文件，可选择分离方式', 'success');
+    } else if (page === 'lyrics') {
+      lyrState.files = [file];
+      if (!$('#lyr-query').value) $('#lyr-query').value = baseName(file).replace(/\.[^.]+$/, '').replace(/[._]/g, ' ').trim();
+      renderLyricsFiles();
+      gotoPage('lyrics');
+      toast('已载入音乐文件，可搜索或粘贴歌词', 'success');
+    }
+  } catch (e) { errorDialog('载入失败', e.message); }
+}
+
 for (const el of [$('#task-list-active'), $('#task-list-done')]) {
   el.addEventListener('click', e => {
     const btn = e.target.closest('[data-act]');
@@ -467,6 +553,13 @@ $('#fmt-table').addEventListener('change', e => {
 $('#btn-download').onclick = async () => {
   if (!parsedInfo || !selectedFormat) return;
   try {
+    remember('download', {
+      formatKey: selectedFormat,
+      audioOnly: $('#opt-audio-only').checked,
+      merge: $('#opt-merge').checked,
+      subs: $('#opt-subs').checked,
+      audioFormat: $('#opt-audio-fmt').value
+    });
     await api.download({
       url: parsedInfo.webpage,
       info: parsedInfo,
@@ -671,6 +764,10 @@ async function save(patch) {
   settings = await api.settings.set(patch);
   $('#download-dir-hint').textContent = '保存到 ' + settings.downloadDir;
 }
+function remember(group, data) {
+  memory[group] = { ...(memory[group] || {}), ...data };
+  api.memory.record(group, data);
+}
 $('#set-dir').addEventListener('change', e => save({ downloadDir: e.target.value.trim() || settings.downloadDir }));
 $('#pick-dir').onclick = async () => { const d = await api.dialog.dir(); if (d) { $('#set-dir').value = d; save({ downloadDir: d }); } };
 $('#open-dir').onclick = () => api.shell.open(settings.downloadDir);
@@ -769,6 +866,7 @@ const LOSSLESS = ['flac', 'wav', 'aiff', 'alac'];
 FORMATS.forEach(f => {
   const b = document.createElement('button');
   b.className = 'fmt-btn' + (f.id === 'mp4' ? ' active' : '');
+  b.dataset.format = f.id;
   b.textContent = f.id.toUpperCase();
   b.onclick = () => {
     convertState.format = f.id;
@@ -797,6 +895,14 @@ $('#btn-convert-reset').onclick = () => { convertState.file = null; $('#convert-
 $('#btn-convert').onclick = async () => {
   if (!convertState.file) return;
   try {
+    remember('convert', {
+      format: convertState.format,
+      resolution: $('#convert-res').value,
+      crf: parseInt($('#convert-crf').value),
+      audioKbps: parseInt($('#convert-abr').value),
+      sampleRate: $('#convert-rate').value,
+      bitDepth: $('#convert-depth').value
+    });
     await api.convert({
       file: convertState.file, format: convertState.format,
       resolution: $('#convert-res').value, crf: parseInt($('#convert-crf').value),
@@ -828,6 +934,7 @@ $('#btn-extract-reset').onclick = () => { extractState.file = null; $('#extract-
 $('#btn-extract').onclick = async () => {
   if (!extractState.file) return;
   try {
+    remember('extract', { mode: extractState.mode, audioFormat: $('#extract-fmt').value });
     await api.extract({ file: extractState.file, mode: extractState.mode, audioFormat: $('#extract-fmt').value, duration: extractState.probe?.duration, fps: extractState.probe?.fps, hasAudio: !!extractState.probe?.acodec, vindex: extractState.probe?.vindex, aindex: extractState.probe?.aindex });
     toast('已加入提取队列', 'success');
   } catch (e) { errorDialog('启动提取失败', e.message); }
@@ -953,6 +1060,7 @@ function renderRegions() {
 $('#btn-watermark').onclick = async () => {
   if (!wm.file || !wm.regions.length) return;
   try {
+    remember('watermark', { mode: wm.mode });
     await api.watermark({
       file: wm.file, mode: wm.mode,
       regions: wm.regions.map(({ id, x, y, w, h }) => ({ id, x, y, w, h })),
@@ -1095,6 +1203,14 @@ $('#btn-sub-offset').onclick = () => {
 $('#btn-sub-apply').onclick = async () => {
   if (!subState.file || !subState.entries.length) return;
   try {
+    remember('subtitle', {
+      source: $('#sub-source .seg-btn.active')?.dataset.src || '',
+      mode: subState.mode,
+      container: $('#sub-container').value,
+      fontSize: parseInt($('#sub-fontsize').value) || 22,
+      color: $('#sub-color').value,
+      margin: parseInt($('#sub-margin').value) || 30
+    });
     await api.subtitle.apply({
       file: subState.file, entries: subState.entries, mode: subState.mode,
       container: $('#sub-container').value,
@@ -1225,6 +1341,10 @@ $('#btn-lyr-burn').onclick = async () => {
   const text = $('#lyr-text').value.trim();
   if (!lyrState.files.length || !text) return;
   try {
+    remember('lyrics', {
+      source: $('#lyr-source .seg-btn.active')?.dataset.src || '',
+      synced: $('#lyr-synced').checked
+    });
     await api.lyrics.burn({ files: lyrState.files, text, synced: $('#lyr-synced').checked });
     toast(`已加入 ${lyrState.files.length} 个歌词烧录任务`, 'success');
     gotoPage('tasks');
@@ -1253,9 +1373,68 @@ async function refreshLoginStatus() {
 api.cookies.onChanged(s => renderLoginStatus(s));
 setInterval(refreshLoginStatus, 5000);
 
+/* ── 记忆预填：各功能页恢复上次参数 ── */
+function applyMemory() {
+  try {
+    const mp = memory.download || {};
+    if (mp.audioOnly !== undefined) {
+      $('#opt-audio-only').checked = !!mp.audioOnly;
+      $('#opt-audio-fmt').classList.toggle('hidden', !$('#opt-audio-only').checked);
+    }
+    if (mp.audioFormat) $('#opt-audio-fmt').value = mp.audioFormat;
+
+    const me = memory.extract || {};
+    if (me.mode) {
+      const btn = $(`#extract-modes .mode-card[data-mode="${me.mode}"]`);
+      if (btn) btn.click();
+    }
+    if (me.audioFormat) $('#extract-fmt').value = me.audioFormat;
+
+    const mw = memory.watermark || {};
+    if (mw.mode) {
+      const btn = $(`#wm-modes .seg-btn[data-mode="${mw.mode}"]`);
+      if (btn) btn.click();
+    }
+
+    const ms = memory.subtitle || {};
+    if (ms.source) {
+      const btn = $(`#sub-source .seg-btn[data-src="${ms.source}"]`);
+      if (btn) btn.click();
+    }
+    if (ms.mode) {
+      const btn = $(`#sub-mode .seg-btn[data-mode="${ms.mode}"]`);
+      if (btn) btn.click();
+    }
+    if (ms.container) $('#sub-container').value = ms.container;
+    if (ms.fontSize) $('#sub-fontsize').value = ms.fontSize;
+    if (ms.color) $('#sub-color').value = ms.color;
+    if (ms.margin) $('#sub-margin').value = ms.margin;
+
+    const ml = memory.lyrics || {};
+    if (ml.source) {
+      const btn = $(`#lyr-source .seg-btn[data-src="${ml.source}"]`);
+      if (btn) btn.click();
+    }
+    if (ml.synced !== undefined) $('#lyr-synced').checked = !!ml.synced;
+
+    const mc = memory.convert || {};
+    if (mc.format) {
+      const btn = $(`#convert-formats [data-format="${mc.format}"]`);
+      if (btn) btn.click();
+    }
+    if (mc.resolution) $('#convert-res').value = mc.resolution;
+    if (mc.crf) { $('#convert-crf').value = mc.crf; $('#convert-crf').dispatchEvent(new Event('input')); }
+    if (mc.audioKbps) $('#convert-abr').value = mc.audioKbps;
+    if (mc.sampleRate) $('#convert-rate').value = mc.sampleRate;
+    if (mc.bitDepth) $('#convert-depth').value = mc.bitDepth;
+  } catch {}
+}
+
 /* ── 初始化 ── */
 (async function init() {
   await initSettings();
+  memory = await api.memory.get();
+  applyMemory();
   const list = await api.tasks.list();
   list.forEach(t => { tasks.set(t.id, t); prevStatus.set(t.id, t.status); });
   renderTasks();

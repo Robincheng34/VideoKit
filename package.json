@@ -1,12 +1,12 @@
 {
   "name": "videokit",
   "productName": "VideoKit",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "视频解析下载 · 格式转换 · 视音频分离 · 水印清除",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win"
+    "dist": "electron-builder --win && powershell -NoProfile -Command \"Remove-Item -Recurse -Force 'release/win-unpacked','release/win-unpacked.tmp' -ErrorAction SilentlyContinue; Remove-Item -Force 'release/builder-debug.yml','release/latest.yml','release/*.blockmap' -ErrorAction SilentlyContinue\""
   },
   "author": "Robin",
   "license": "MIT",
@@ -30,6 +30,7 @@
     ],
     "asar": true,
     "npmRebuild": false,
+    "buildBlockMap": false,
     "extraResources": [
       {
         "from": "src/asr_helper.py",

@@ -211,7 +211,8 @@ function verifyOutput(settings, file, expect, onChild) {
     if (!info.duration || info.duration <= 0) throw new Error('输出时长无效');
     if (expect.duration && Math.abs(info.duration - expect.duration) / expect.duration > 0.1)
       throw new Error(`输出时长 ${info.duration.toFixed(1)}s 与源 ${expect.duration.toFixed(1)}s 不符`);
-    if (expect.hasAudio && !info.acodec) throw new Error('缺少音频流');
+    if (expect.hasVideo === true && !info.vcodec) throw new Error('缺少视频流，产物不完整');
+    if (expect.hasAudio === true && !info.acodec) throw new Error('缺少音频流，产物不完整');
     if (!info.vcodec && !info.acodec) throw new Error('无可解码流');
     const gpu = settings.encoder !== 'cpu' && (await gpuInfo()).nvenc;
     await new Promise((res, rej) => {

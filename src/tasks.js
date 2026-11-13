@@ -203,7 +203,8 @@ class TaskManager {
     try {
       const info = await this.tools.verifyOutput(this.settings, t.outputPath, {
         duration: t._duration || t._spec.durationHint,
-        hasAudio: t._spec.hasAudio
+        hasAudio: t._spec.hasAudio === true,
+        hasVideo: t._spec.hasVideo === true
       }, child => { t._verifyChild = child; livePids.add(child.pid); });
       t._verifyChild = null;
       if (t.status === 'cancelled') { this.pump(); return; }

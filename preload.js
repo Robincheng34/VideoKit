@@ -15,6 +15,11 @@ contextBridge.exposeInMainWorld('api', {
     get: () => ipcRenderer.invoke('settings:get'),
     set: patch => ipcRenderer.invoke('settings:set', patch)
   },
+  memory: {
+    get: () => ipcRenderer.invoke('memory:get'),
+    record: (group, data) => ipcRenderer.invoke('memory:record', group, data),
+    clear: group => ipcRenderer.invoke('memory:clear', group)
+  },
   theme: {
     current: () => ipcRenderer.invoke('theme:current'),
     onChanged: cb => ipcRenderer.on('theme:changed', (_e, dark) => cb(dark))
