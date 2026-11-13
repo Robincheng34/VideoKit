@@ -538,8 +538,11 @@ function registerIpc() {
     return true;
   });
 
-  ipcMain.handle('cookies:login', (_e, url) => {
+  ipcMain.handle('cookies:login', async (_e, url) => {
     const ses = session.fromPartition('persist:videokit-web');
+    if (settings.proxy) {
+      try { await ses.setProxy({ proxyRules: settings.proxy }); } catch {}
+    }
     const w = new BrowserWindow({
       width: 1024, height: 820, parent: win,
       title: '平台登录 — 登录成功后自动关闭并保存 Cookies',
@@ -547,13 +550,17 @@ function registerIpc() {
     });
     w.loadURL(url);
     const host = new URL(url).hostname;
-    const marker = host.includes('bilibili') ? 'SESSDATA'
-      : host.includes('youtube') || host.includes('google') ? 'SID' : 'ttwid';
+    const isYt = host.includes('youtube') || host.includes('google');
     let closing = false;
     const onChanged = (_ev, cookie, cause, removed) => {
-      if (closing || removed || !cookie || cookie.name !== marker || !cookie.value) return;
+      if (closing || removed || !cookie || !cookie.value) return;
+      // YouTube 会话 cookie 落在 .youtube.com；仅 .google.com 的 SID 出现时登录尚未完成
+      const hit = host.includes('bilibili') ? cookie.name === 'SESSDATA'
+        : isYt ? (cookie.domain || '').includes('youtube') && (cookie.name === 'LOGIN_INFO' || cookie.name === 'SID')
+        : cookie.name === 'ttwid';
+      if (!hit) return;
       closing = true;
-      setTimeout(() => { if (!w.isDestroyed()) w.close(); }, 1500);
+      setTimeout(() => { if (!w.isDestroyed()) w.close(); }, 2500);
     };
     ses.cookies.on('changed', onChanged);
     return new Promise(resolve => {
