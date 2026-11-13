@@ -53,6 +53,8 @@ contextBridge.exposeInMainWorld('api', {
     login: url => ipcRenderer.invoke('cookies:login', url),
     import: (browser, force) => ipcRenderer.invoke('cookies:import', browser, force),
     clear: () => ipcRenderer.invoke('cookies:clear'),
+    status: () => ipcRenderer.invoke('cookies:status'),
+    onChanged: cb => ipcRenderer.on('cookies:changed', (_e, s) => cb(s)),
     onSaved: cb => ipcRenderer.on('cookies:saved', (_e, d) => cb(d))
   },
   parse: url => ipcRenderer.invoke('parse:url', url),

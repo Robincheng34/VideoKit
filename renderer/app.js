@@ -665,6 +665,7 @@ async function initSettings() {
   $('#download-dir-hint').textContent = '保存到 ' + settings.downloadDir;
   updateCookieStatus();
   await refreshTools();
+  refreshLoginStatus();
 }
 async function save(patch) {
   settings = await api.settings.set(patch);
@@ -1229,6 +1230,28 @@ $('#btn-lyr-burn').onclick = async () => {
     gotoPage('tasks');
   } catch (e) { errorDialog('启动烧录失败', e.message); }
 };
+
+/* ── 实时登录状态 ── */
+const LS_TEXT = { logged: '已登录', expired: '已过期', none: '未登录' };
+function renderLoginStatus(s) {
+  const box = $('#login-status');
+  if (!box) return;
+  if (!s || !s.configured) {
+    box.innerHTML = '<span class="ls-chip none"><span class="dot"></span>未配置 Cookies</span>';
+    return;
+  }
+  box.innerHTML = s.platforms.map(p => {
+    const exp = p.expires ? new Date(p.expires * 1000).toLocaleDateString() : '';
+    return `<span class="ls-chip ${p.state}" title="${p.name} ${LS_TEXT[p.state]}${exp ? ' · 有效期至 ' + exp : ''}">
+      <span class="dot"></span>${esc(p.name)} · ${LS_TEXT[p.state]}${p.state === 'logged' && exp ? `<small>${exp}</small>` : ''}
+    </span>`;
+  }).join('');
+}
+async function refreshLoginStatus() {
+  try { renderLoginStatus(await api.cookies.status()); } catch {}
+}
+api.cookies.onChanged(s => renderLoginStatus(s));
+setInterval(refreshLoginStatus, 5000);
 
 /* ── 初始化 ── */
 (async function init() {

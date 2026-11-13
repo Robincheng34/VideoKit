@@ -161,6 +161,8 @@ function mergeCookies(cookies) {
   fs.writeFileSync(file, '# Netscape HTTP Cookie File\n' + [...map.values()].join('\n') + '\n');
   settings.cookieFile = file;
   saveSettings();
+  watchCookies();
+  send('cookies:changed', cookieStatus());
   return file;
 }
 
@@ -446,6 +448,45 @@ function decodeSubBuffer(buf) {
   return { format: 'srt', entries: parseSrt(text) };
 }
 
+function cookieStatus() {
+  const file = settings.cookieFile;
+  const platforms = [
+    { id: 'bilibili', name: 'B站', markers: ['SESSDATA'], domain: 'bilibili' },
+    { id: 'youtube', name: 'YouTube', markers: ['LOGIN_INFO', 'SID'], domain: 'youtube' },
+    { id: 'douyin', name: '抖音', markers: ['sessionid', 'sessionid_ss', 'passport_auth_status'], domain: 'douyin' },
+    { id: 'netease', name: '网易云', markers: ['MUSIC_U'], domain: 'music.163' }
+  ];
+  const rows = [];
+  let lines = [];
+  if (file && fs.existsSync(file)) {
+    lines = fs.readFileSync(file, 'utf8').split('\n').filter(l => l && !l.startsWith('#')).map(l => l.split('\t'));
+  }
+  const now = Date.now() / 1000;
+  for (const p of platforms) {
+    const hits = lines.filter(c => c.length >= 7 && c[0].includes(p.domain) && p.markers.includes(c[5]) && c[6]);
+    if (!hits.length) { rows.push({ id: p.id, name: p.name, state: 'none', expires: null }); continue; }
+    const exps = hits.map(c => parseInt(c[4], 10)).filter(e => e > 0);
+    const exp = exps.length ? Math.min(...exps) : null;
+    const expired = exp !== null && exp < now;
+    rows.push({ id: p.id, name: p.name, state: expired ? 'expired' : 'logged', expires: exp });
+  }
+  return { configured: !!(file && fs.existsSync(file)), platforms: rows };
+}
+
+let cookieWatcher = null;
+function watchCookies() {
+  if (cookieWatcher) { cookieWatcher.close(); cookieWatcher = null; }
+  const file = settings.cookieFile;
+  if (!file || !fs.existsSync(file)) return;
+  let timer = null;
+  try {
+    cookieWatcher = fs.watch(file, () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => send('cookies:changed', cookieStatus()), 500);
+    });
+  } catch {}
+}
+
 function registerIpc() {
   ipcMain.on('win:minimize', () => win.minimize());
   ipcMain.on('win:maximize', () => (win.isMaximized() ? win.unmaximize() : win.maximize()));
@@ -473,6 +514,7 @@ function registerIpc() {
     saveSettings();
     tasks.maxConcurrent = settings.maxConcurrent;
     tools.invalidate();
+    watchCookies();
     send('theme:changed', nativeTheme.shouldUseDarkColors);
     return { ...settings };
   });
@@ -538,6 +580,7 @@ function registerIpc() {
     return true;
   });
 
+  ipcMain.handle('cookies:status', () => cookieStatus());
   ipcMain.handle('cookies:login', async (_e, url) => {
     const ses = session.fromPartition('persist:videokit-web');
     if (settings.proxy) {
@@ -974,6 +1017,7 @@ if (!gotLock) {
     loadSettings();
     tasks = new TaskManager(settings, tools, send);
     registerIpc();
+    watchCookies();
     createWindow();
   });
   app.on('window-all-closed', () => {
